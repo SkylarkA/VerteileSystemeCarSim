@@ -9,10 +9,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.Date;
-
 import java.util.LinkedList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.net.URL;
+
+import org.apache.xmlrpc.XmlRpcException;
+import org.apache.xmlrpc.client.XmlRpcClient;
+import org.apache.xmlrpc.client.XmlRpcClientConfigImpl;
 
 /**
  *
@@ -39,31 +44,64 @@ public class Monitor {
 
     private int port = 9999;
 
-    public Monitor() {
+    private XmlRpcClientConfigImpl config;
+    private XmlRpcClient client;
+    
+    private int totalUDPGot=0;
+    private int totalCurruptUDP =0;
+    
+    
+   public Monitor() {
         try {
             mg = new MonitorGui(this);
             mg.setVisible(true);
+            //initRPCClient();
             initDataModel();
-            //initTCPServer();
-            initSimpleUDPServer();
+           // initTCPServer();
+            //initAdvancedUDPServer();
     //        initMultiThreadUDPServer();
+            
+            initSimpleUDPServer();
 
+            
+            
         } catch (IOException ex) {
             Logger.getLogger(Monitor.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+    
+  /*  public Monitor(){
+    	 mg = new MonitorGui(this);
+         mg.setVisible(true);
+         initRPCClient();
+         initDataModel();
+         sendDataToNavService();
+    }*/
 
     public Monitor(int port) {
         try {
             this.port = port;
             mg = new MonitorGui(this);
             mg.setVisible(true);
+            //initRPCClient();
             initDataModel();
             initTCPServer();
 
         } catch (IOException ex) {
             Logger.getLogger(Monitor.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+    
+    private void initRPCClient(){
+    	config = new XmlRpcClientConfigImpl();
+    	try {
+			config.setServerURL(new URL("http://127.0.0.1:8080/xmlrpc"));
+			client = new XmlRpcClient();
+			client.setConfig(config);
+		} catch (MalformedURLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     private boolean processLine(String line) {
@@ -85,6 +123,9 @@ public class Monitor {
                 speed = Integer.parseInt(speedString);
             } catch (NumberFormatException e) {
                 //the speed string is broken and can not be turned into a number
+            //	System.out.println("string broken");
+            //	System.out.println(line);
+            	
                 return false;
             }
 
@@ -97,15 +138,21 @@ public class Monitor {
             }
 
             if (nameOK) {
+            	
+            	//System.out.println(line);
                 //everything was ok
                 return true;
             } else {
+            	//System.out.println("string broken");
+            	//System.out.println(line);
                 //the edge name we got was unknowm
                 return false;
             }
 
         } else {
 
+        	//System.out.println("string broken");
+        	//System.out.println(line);
             //not the type of packet we are looking for
             return false;
         }
@@ -152,12 +199,60 @@ public class Monitor {
             ds.receive(incomingPacket);
             InetAddress clientAddress = incomingPacket.getAddress();
             int clientPort = incomingPacket.getPort();
-            new CarService(clientAddress, clientPort, incomingPacket).start();
+           // new CarService(clientAddress, clientPort, incomingPacket).start();
 
         }
     }
-
+    
+    
     public void initSimpleUDPServer() throws IOException {
+    	 DatagramSocket ds = new DatagramSocket(port);
+         DatagramPacket incomingPacket;
+         DatagramPacket outgoingPacket;
+         byte[] incMsg = new byte[1024];
+         byte[] outMsg;
+         
+         while(true){
+        	 incomingPacket = new DatagramPacket(incMsg, incMsg.length);
+             ds.receive(incomingPacket);
+             totalUDPGot++;
+             if(processLine(new String(incomingPacket.getData()))){
+            	
+            	 changeCounter++;
+            	 if(changeCounter == sendCount){
+            		 mg.updateTextbox();
+            		 changeCounter=0;
+            		 sendDataToNavService();
+            		 System.out.print("Total UDP recieved: ");
+            		 System.out.println(totalUDPGot);
+            		 System.out.print("Total corrupted UDP recieved: ");
+            		 System.out.println(totalCurruptUDP);
+            	 }
+            	 
+             }else{
+            	 totalCurruptUDP++;
+             }
+         }
+    }
+    
+    
+    public void sendDataToNavService(){
+    	/*List<String> jammedRoads = new LinkedList<String>();
+    	for(int i=0;i<roadNames.size();i++){
+    		jammedRoads.add(roadNames.get(i)); 
+    	}
+    	
+    	
+    	
+    	try {
+			Boolean result = (Boolean) client.execute("NavServer.setJamms",new Object[]{jammedRoads});
+		} catch (XmlRpcException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}*/
+    }
+
+    public void initAdvancedUDPServer() throws IOException {
         DatagramSocket ds = new DatagramSocket(port);
         DatagramPacket incomingPacket;
         DatagramPacket outgoingPacket;
@@ -165,6 +260,8 @@ public class Monitor {
         byte[] outMsg;
 
         while (true) {
+        	System.out.println("waiting for data");
+        	
             incomingPacket = new DatagramPacket(incMsg, incMsg.length);
             ds.receive(incomingPacket);
             InetAddress clientAddress = incomingPacket.getAddress();
@@ -176,6 +273,7 @@ public class Monitor {
                 int redo = 0;
 
                 while (redo < maxTry) {
+                	System.out.println("sending ok");
                     String ok = "ok";
                     outMsg = ok.getBytes();
                     outgoingPacket = new DatagramPacket(outMsg, outMsg.length, clientAddress, clientPort);
@@ -185,18 +283,28 @@ public class Monitor {
                     
                     String reply = new String(incomingPacket.getData());
                     if(reply.equals("fin")){
+                    	
                         break;
                     }else{
                         redo++;
                     }
                     
                 }
+                
+                
 
             } else {
+            	System.out.println(new String(incomingPacket.getData()));
                 System.out.println("string broken");
             }
 
-            System.out.println(new String(incomingPacket.getData()));
+        
+       	 changeCounter++;
+       	 if(changeCounter == sendCount){
+       		 mg.updateTextbox();
+       		changeCounter=0;
+       		sendDataToNavService();
+       	 }
         }
     }
 
@@ -215,6 +323,7 @@ public class Monitor {
                     changeCounter = 0;
                     try {
                         mg.updateTextbox();
+                        sendDataToNavService();
                     } catch (Exception ex) {
 
                         Logger.getLogger(Monitor.class.getName()).log(Level.SEVERE, null, ex);

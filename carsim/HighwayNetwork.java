@@ -34,6 +34,8 @@ public class HighwayNetwork {
     //the third dimension contains the index for each edge in the 3 synced vectors
     public int[][][] adjacencyMatrix;
 
+    public Vector<String> artificialJams;
+    
     /**
      * constructor
      * @param maxSize the max count of nodes 
@@ -45,6 +47,7 @@ public class HighwayNetwork {
         edgeNames = new Vector<String>();
         maxEdgeCap = new Vector<Integer>();
         edgeUsage = new Vector<Integer>();
+        artificialJams = new Vector<String>();
 
         size = 0;
 
@@ -57,6 +60,21 @@ public class HighwayNetwork {
         
         populateNetwork();
         //populateTest();
+    }
+    
+    public void toggleArtificalJam(String name){
+    	//check if there is already artifical jam
+    	for(int i=0;i<artificialJams.size();i++){
+    		if(artificialJams.get(i).equals(name)){
+    			artificialJams.remove(i);
+    			edgeUsage.set(this.getEdgeIndex(name), edgeUsage.get(this.getEdgeIndex(name))-10);
+    			return;
+    		}
+    	}
+    	
+    	edgeUsage.set(this.getEdgeIndex(name), edgeUsage.get(this.getEdgeIndex(name))+10);
+    	artificialJams.add(name);
+    	
     }
     
     /**

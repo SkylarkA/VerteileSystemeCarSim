@@ -108,6 +108,8 @@ public class CarSim {
                 Logger.getLogger(CarSim.class.getName()).log(Level.SEVERE, null, ex);
             }
             moveAllCars();
+            System.out.print("Total number of udp packages send: ");
+            System.out.println(AutonomousCar.totalSend);
             
             if(guiOnline){
                 try {
@@ -185,9 +187,13 @@ public class CarSim {
             if(cars.get(i).reachedDest){
                 giveDestinationToCar(cars.get(i));
             }
-            cars.get(i).performTurn(tickLength);
+            cars.get(i).performTurn(tickLength);            
         }
-    } 
+    }
+    
+    public void createJam(String name){
+    	hn.toggleArtificalJam(name);
+    }
     
     
     
@@ -204,7 +210,7 @@ public class CarSim {
      */
     public void addCars(int count,boolean autonomous){
         Car car;
-        System.out.println("adding");
+        
         
         for(int i=0;i<count;i++){
             if(autonomous){

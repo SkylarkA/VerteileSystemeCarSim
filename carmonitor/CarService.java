@@ -14,6 +14,7 @@ import java.io.InputStreamReader;
 import java.net.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Date;
 
 public class CarService extends Thread {
 
@@ -22,23 +23,20 @@ public class CarService extends Thread {
 
     InetAddress ia;
     int port;
-    DatagramPacket incomingPacket;
-    boolean udp;
+    
+    private Date threadStarted;
+    private Date threadIsDone;
+   
 
     CarService(Socket client, Monitor monitor) {
         this.client = client;
         this.monitor = monitor;
-        udp = false;
+        threadStarted = new Date();
+      
 
     }
 
-    CarService(InetAddress ia, int port,DatagramPacket incomingpacket ) {
-        this.ia = ia;
-        this.port = port;
-        this.incomingPacket = incomingpacket;
-        udp = true;
-
-    }
+   
 
     private void processLine(String line) {
 
@@ -64,9 +62,7 @@ public class CarService extends Thread {
 
     }
     
-    private void checkString(String str){
-        System.out.println(str);
-    }
+   
 
     private void runAsTCP() {
         String line;
@@ -86,6 +82,12 @@ public class CarService extends Thread {
             }
             fromClient.close();
             client.close(); // End
+            threadIsDone = new Date();
+            
+            long diff = threadIsDone.getTime() - threadStarted.getTime();
+            System.out.print("Time spend for tcp in ms: ");
+            System.out.println(diff);
+            
 
         } catch (Exception e) {
 
@@ -94,31 +96,13 @@ public class CarService extends Thread {
 
     }
 
-    private void runAsUDP() {
-        try {
-            checkString(new String(incomingPacket.getData()));
-            
-            DatagramPacket outgoingPacket;
-            DatagramSocket ds = new DatagramSocket(9998);
-            String ok = "ok";
-            byte[] outMsg = new byte[254];
-            outMsg = ok.getBytes();
-            outgoingPacket = new DatagramPacket(outMsg, outMsg.length, ia, port);
-            ds.send(outgoingPacket);
-        } catch (SocketException ex) {
-            Logger.getLogger(CarService.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(CarService.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+    
 
     @Override
     public void run() {
-        if (udp) {
-            runAsUDP();
-        } else {
+      
             runAsTCP();
-        }
+        
 
     }
 }

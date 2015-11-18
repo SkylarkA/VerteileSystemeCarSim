@@ -101,7 +101,7 @@ public class SimGui extends javax.swing.JFrame{
         jComboBox1.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e){
                 String seectedItem =(String)jComboBox1.getSelectedItem();
-                System.out.println(seectedItem);
+                cs.createJam(seectedItem);
             }
         });
        

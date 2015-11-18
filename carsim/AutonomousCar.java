@@ -27,6 +27,8 @@ public class AutonomousCar extends Car {
     private String hostName;
     private int port;
     
+    public static int totalSend =0;
+    
     /**
      * standart constructor
      * @param maxSpeed ma speed of the car
@@ -50,7 +52,19 @@ public class AutonomousCar extends Car {
          toServer = new DataOutputStream(socket.getOutputStream());
     }
     
-    public void sendDataToServerUDP() throws IOException{
+    public void sendDataToSeverUDPSimple()throws IOException{
+    	 DatagramSocket ds = new DatagramSocket();
+         InetAddress address = InetAddress.getByName(hostName);
+         byte[] msgToServer;
+         String dataString = buildDataString();
+         msgToServer = dataString.getBytes();
+         DatagramPacket packetOutgoing = new DatagramPacket(msgToServer, msgToServer.length,address, port);
+         ds.send(packetOutgoing);//send data
+         ds.close();
+         totalSend++;
+    }
+    
+    public void sendDataToServerUDPAdvanced() throws IOException{
         
         String finalMsg = "fin";
         DatagramSocket ds = new DatagramSocket();
@@ -65,28 +79,35 @@ public class AutonomousCar extends Car {
         DatagramPacket packetIncoming = new DatagramPacket(msgFromServer,msgFromServer.length);
         DatagramPacket finalPacket = new DatagramPacket(finalMsgToServer,finalMsgToServer.length,address, port);
         
+        ds.setSoTimeout(500); //half a second
         
         int maxTry = 5;
         int redo = 0;
         
         while(redo<maxTry){
+        	System.out.println("sending");
             ds.send(packetOutgoing);//send data
-            ds.receive(packetIncoming); //wait for reply
+           
+            try{
+            	ds.receive(packetIncoming); //wait for reply
+            }catch(SocketTimeoutException e){
+            	continue;
+            }        
             
             String incString = new String(packetIncoming.getData());
             
             if(incString.equals("ok")){
-                break;
+                //System.out.println("three way handshake was ok");
+            	break;
             }else{
                 //no reply was send
+            	
                 redo++;
             }            
         }
         
         ds.send(finalPacket);
-        
-        
-        System.out.println(new String(packetIncoming.getData()));
+           
         ds.close();
     }
     
@@ -115,7 +136,9 @@ public class AutonomousCar extends Car {
             
             
            // sendDataToServerTCP();
-            sendDataToServerUDP();
+          // sendDataToServerUDPAdvanced();
+            sendDataToSeverUDPSimple();
+            
             
             Date d2 = new Date();
             
@@ -180,7 +203,7 @@ public class AutonomousCar extends Car {
         StringBuffer sb = new StringBuffer();
                
         //string should look like this:
-        //id;speed;location;direction;destination
+        //data;id;speed;location;direction;destination
         sb.append("data").append(";").append(Integer.toString(id)).append(";").append(speed).append(";").append(location).append(";").
                 append(direction).append(";").append(dest);
         
